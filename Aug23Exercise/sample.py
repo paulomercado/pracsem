@@ -89,14 +89,13 @@ if __name__ == '__main__' :
     parser = create_parser()
     kwargs = parser.parse_args()
     
+
     ticker = kwargs.ticker
     output_directory = kwargs.output_directory
     file_date = kwargs.file_date
     dte = pd.Timestamp(file_date)
     
-    # ticker = ['ADBE']
-    # dte = pd.Timestamp('20150102')
-    # output_directory = "/Users/rodbarit/Documents/Ateneo_seminar/2025/20250823/"
+    
     
     hist_start = dte + pd.DateOffset(days = -90)
     
@@ -109,21 +108,27 @@ if __name__ == '__main__' :
     
     df = read_data(path, list_dates)
     df.rename(columns={'stock splits':'stock_splits','industry_tag':'industry'},inplace=True)
-    df = df[df["ticker"].isin(ticker)]
-    df = df.drop(columns=['country', 'brand_name'])    
-    
-    df['previous_close'] = df['close'].shift(1)
-    df['simple_return']  = (df['close']+df['dividends']) / df['previous_close'] - 1
-    df['log_return']    = np.log((df['close']+df['dividends'])/df['previous_close'])
-    df['volatility_P21'] = df['log_return'].rolling(21).std()
-    df['volatility_P60'] = df['log_return'].rolling(60).std()
-    df['overnight_log_ret'] = np.log((df['open']+df['dividends'])/df['previous_close'])
-    df['today_log_ret'] = np.log((df['close'])/df['open'])
-    df['overnight_volatility_P21'] = df['overnight_log_ret'].rolling(21).std()
-    df['today_volatility_P21'] = df['today_log_ret'].rolling(21).std()
-    
-    df = df[df['date']==dte].reset_index(drop=True)
 
+    finaldf = []
+    for t in ticker:
+        
+        df_t = df[df['ticker']==t].copy()
+        df_t = df_t.drop(columns=['country', 'brand_name'])    
+        
+        df_t['previous_close'] = df_t['close'].shift(1)
+        df_t['simple_return']  = (df_t['close']+df_t['dividends']) / df_t['previous_close'] - 1
+        df_t['log_return']    = np.log((df_t['close']+df_t['dividends'])/df_t['previous_close'])
+        df_t['volatility_P21'] = df_t['log_return'].rolling(21).std()
+        df_t['volatility_P60'] = df_t['log_return'].rolling(60).std()
+        df_t['overnight_log_ret'] = np.log((df_t['open']+df_t['dividends'])/df_t['previous_close'])
+        df_t['today_log_ret'] = np.log((df_t['close'])/df_t['open'])
+        df_t['overnight_volatility_P21'] = df_t['overnight_log_ret'].rolling(21).std()
+        df_t['today_volatility_P21'] = df_t['today_log_ret'].rolling(21).std()
+        
+        df_t = df_t[df_t['date']==dte].reset_index(drop=True)
+        finaldf.append(df_t)
+        
+    df = pd.concat(finaldf, ignore_index=True)
     Path(f"{output_directory}/").mkdir(parents=True, exist_ok=True) ### creates the directory
     df.to_csv(f"{output_directory}/{dte.strftime('%Y%m%d')}.prices.csv.gz",
                                       index = False,
