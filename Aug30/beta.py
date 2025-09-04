@@ -113,15 +113,16 @@ if __name__ == '__main__':
         sf_c=np.cumprod(sf[::-1])[::-1]
         df['adj']=sf/sf_c
         df['adj_price']=df['closing_price']*df['adj']
+        df['adj_div']=df['dividends']*df['adj']
         
         df_macro['SPX_log_ret'] = np.log(df_macro['SPX'] / df_macro['SPX'].shift(1))
 
-        df['log_ret']=np.log((df['adj_price']+df['dividends'])/df['adj_price'].shift(1))
+        df['log_ret']=np.log((df['adj_price']+df['adj_div'])/df['adj_price'].shift(1))
         for k in range(1,6):
-            df[f'log_ret_f{k}']=np.log(df['adj_price'].shift(-k)/(df['adj_price'].shift(-k+1)+df['dividends'].shift(-k+1)))
+            df[f'log_ret_f{k}']=np.log(df['adj_price'].shift(-k)/(df['adj_price'].shift(-k+1)+df['adj_div'].shift(-k+1)))
         df['log_ret_sf5']=df.iloc[:,8:13].sum(axis=1)
         
-        df_final = df.drop(columns=['closing_price','splits','dividends','adj','adj_price'])
+        df_final = df.drop(columns=['closing_price','splits','dividends','adj','adj_price','adj_div'])
         df_final = df_final.merge(df_macro[['date', 'SPX_log_ret']], on='date', how='left')
         
         rolling_cov = df_final['log_ret'].rolling(window=w).cov(df_final['SPX_log_ret'])

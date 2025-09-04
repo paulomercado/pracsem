@@ -74,7 +74,7 @@ def create_parser():
     return p
 
 
-# Sample execution: ./logret.py -f 20160104 -s 10038243 10029434 10033653 10009241 10036975 -o /q/home/ph.rod.barit/ateneo_practitioner/logret/
+# Sample execution: ./logret.py -f 20160104 -s 10038243 10029434 10033653 10009241 10036975 -o /q/home/ph.paulo.mercado/Aug30
 
 if __name__ == '__main__':
     parser = create_parser()
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     data = utils.read_data(PRICES_PATH,dates,columns=['date','cwiq_code','closing_price','splits','dividends'])
     data['date'] = pd.to_datetime(data['date'])
     output = []
-    print(data)
+    
     for s in sids:
         sint = int(s)
         df=data[data['cwiq_code']==sint].copy()
@@ -101,13 +101,13 @@ if __name__ == '__main__':
         sf_c=np.cumprod(sf[::-1])[::-1]
         df['adj']=sf/sf_c
         df['adj_price']=df['closing_price']*df['adj']
-
-        df['log_ret']=np.log((df['adj_price']+df['dividends'])/df['adj_price'].shift(1))
+        df['adj_div']=df['dividends']*df['adj']
+        df['log_ret']=np.log((df['adj_price']+df['adj_div'])/df['adj_price'].shift(1))
         for k in range(1,6):
             df[f'log_ret_f{k}']=np.log(df['adj_price'].shift(-k)/(df['adj_price'].shift(-k+1)+df['dividends'].shift(-k+1)))
         df['log_ret_sf5']=df.iloc[:,8:13].sum(axis=1)
         
-        df_final = df.drop(columns=['closing_price','splits','dividends','adj','adj_price'])
+        df_final = df.drop(columns=['closing_price','splits','dividends','adj','adj_div','adj_price'])
         df_final = df_final[df_final['date'] == dte]
         
         output.append(df_final)
