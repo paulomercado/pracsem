@@ -38,6 +38,7 @@ def create_parser():
     p.add_argument('--debug', action='store_true', help="Set logging level to DEBUG.")
 
     return p
+
 def adjprice(df):
     sf= df['splits'].replace(0,1).to_numpy()
     sf_c=np.cumprod(sf[::-1])[::-1]
@@ -46,13 +47,15 @@ def adjprice(df):
     df['adj_div']=df['dividends']*df['adj']
     df['log_ret']=np.log(df['adj_price']/df['adj_price'].shift(1))
     return df
+
 def rev_price(df):
     df = adjprice(df)
-    df['new_close'] = df['adj_price']/np.exp(df['log_return'])
+    df['new_close'] = df['adj_price']/np.exp(df['log_ret'])
     df['new_close'] = df['new_close'].shift(-1)
     df.loc[df.index[-1], 'new_close'] = df['adj_price'].iloc[-1]
     df['MA10']=df['new_close'].rolling(window=10).mean()
     return df
+
 def get_diff(df: pd.DataFrame, cols: List[str], window, suffix=None,inplace=False) -> pd.DataFrame:
     if not inplace:
         df = df.copy()
@@ -60,14 +63,15 @@ def get_diff(df: pd.DataFrame, cols: List[str], window, suffix=None,inplace=Fals
         suffix = f'_DF{window}'
     
     diffed_cols = [f'{c}{suffix}' for c in cols]
-    df[diffed_cols] = df[cols]-df[cols].shift(1)
-    ### place code here ###
+    df[diffed_cols] = df[cols]-df[cols].shift(window)
+    
     return df
+
 def rsi(df):
-    df = get_diff(df,cols=['adj_price'],window=14)
-    df['gain'] = np.where(df['adj_price_DF14']>0,abs(df['adj_price_DF14']),0)
-    df['loss']= np.where(df['adj_price_DF14']<0,abs(df['adj_price_DF14']),0)
-    df['RS'] = df['gain'].mean()/df['loss'].mean()
+    df = get_diff(df,cols=['adj_price'],window=1)
+    df['gain'] = np.where(df['adj_price_DF1']>0,abs(df['adj_price_DF1']),0)
+    df['loss']= np.where(df['adj_price_DF1']<0,abs(df['adj_price_DF1']),0)
+    df['RS'] = df['gain'].rolling(window=14).mean()/df['loss'].rolling(window=14).mean()
     df['RSI_14']=100-(100/(1+df['RS']))
     return df
 # Sample execution: ./rsi.py -f 20160104 -s 10038243 10029434 10033653 10009241 10036975 -o /q/home/ph.paulo.mercado
@@ -95,6 +99,7 @@ if __name__ == '__main__' :
 
     ### Create an empty list
     output=[]
+    
     for s in sids:
         check= df_temp[df_temp['cwiq_code']==s].copy()
         check = rev_price(check)
@@ -103,23 +108,7 @@ if __name__ == '__main__' :
         final = final[final['date'] == dte]
         output.append(final)
 
-    result = pd.concat(output,ignore_index=True)
-
-    ### Create a loop
-
-        # filter to one sid
-
-        # adjust prices
-
-        # created an adjusted price based on log_ret - adjust prices to account for sudden drop in dividends
-
-
-        #calculation of RSI
-
-
-        #filter and append
-
-    ### Concatenate
+    result = pd.concat(output,ignore_index=True)   
 
     Path(f"{output_directory}/{dte.strftime('%Y')}").mkdir(parents=True, exist_ok=True) ### creates the directory
     result.to_csv(f"{output_directory}/{dte.strftime('%Y')}/{dte.strftime('%Y%m%d')}.rsi.csv",
